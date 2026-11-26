@@ -1,50 +1,81 @@
-# Practice 12 — Survive a Restart (lab12)
+# Practice 13 — Where Things Go (lab13)
 
-Three places to keep things:
-**shared_preferences** — settings · **secure storage** — anything that lets someone be you · **a file in Documents** — data. Temporary is temporary.
+One rule: **dependencies point down** — screens watch models, models use repositories, repositories touch the world — and never up.
 
-## Level 1 — six package verdicts
+## Level 1 — feature-first, one move per commit
 
-Order: publisher · last release · platforms · pub points · issues vs commits · dependencies · licence. (Checked on pub.dev, 21 Nov 2026.)
+```
+lib/
+  main.dart                     composition root: the only HttpUserRepository(…)
+  app.dart                      MaterialApp, theme, Login vs Users
+  core/api/                     api_client.dart, api_exception.dart (sealed)
+  core/storage/secure_store.dart
+  features/users/               user.dart, user_repository.dart (interface + Http…),
+                                fake_user_repository.dart, users_cache.dart,
+                                users_model.dart, users_screen.dart, user_detail_screen.dart,
+                                new_user_screen.dart, widgets/ (one widget per file)
+  features/auth/                auth_model.dart, login_screen.dart
+  features/settings/            settings_model.dart, settings_screen.dart
+  features/profile/             profile_screen.dart
+test/                           mirrors lib/
+  features/users/               user_test, user_repository_test, users_model_test, users_screen_test
+  fakes/                        fake_user_repository (export), memory_store, memory_cache, fake_prefs, user1_json
+tool/check_layers.sh            the layer rule — prints nothing
+tool/planted_bug_test.dart      Level 5, red on purpose
+```
 
-| package | verdict |
-|---|---|
-| shared_preferences 2.5.6 | Verified publisher **flutter.dev**, Flutter Favorite, released **Oct 2026**, all six platforms, **160/160** points, maintained in flutter/packages with commits every month, depends only on its own platform implementations, **BSD-3-Clause**. |
-| flutter_secure_storage 11.2.0 | Verified publisher **steenbakker.dev** (a community maintainer, not Google), released **Sep 2026**, all six platforms, **160/160** points, many open issues but regular releases, depends on its platform packages, **BSD-3-Clause**. |
-| path_provider 2.1.6 | Verified publisher **flutter.dev**, Flutter Favorite, released **Jun 2026**, Android · iOS · Linux · macOS · Windows (no Web — a browser has no file system), **160/160** points, maintained by the Flutter team, no dependencies of note, **BSD-3-Clause**. |
-| image_picker 1.2.4 | Verified publisher **flutter.dev**, released **Oct 2026**, all six platforms, **160/160** points, maintained by the Flutter team, depends on its platform packages, **Apache-2.0 + BSD-3-Clause** (multiple licences). |
-| permission_handler 13.0.2 | Verified publisher **baseflow.com** (a company), released **Sep 2026**, Android · iOS · Web · Windows, **160/160** points, many open issues but active commits, depends on its platform packages, **MIT**. |
-| url_launcher 6.3.3 | Verified publisher **flutter.dev**, Flutter Favorite, released **Oct 2026**, all six platforms, **160/160** points, maintained by the Flutter team, depends on its platform packages, **BSD-3-Clause**. |
+- No `utils.dart` / `helpers.dart`. One class per file, named after the class — except where Dart needs them together: the **sealed** ApiException family must live in one library, and `user.dart` keeps Geo/Address/User (one JSON shape), `user_repository.dart` keeps the interface with its Http implementation.
+- `git log --oneline -- lab13` reads like the plan: every commit is one named move.
+- **Break-it:** `import 'package:http/http.dart' as http;` in users_screen.dart compiles and runs — but `tool/check_layers.sh` prints the file. *The compiler has no opinion about layers — the script does.*
 
-### The caret and the lock
+## Level 2 — interfaces and fakes
 
-- `http: ^1.2.0` means `>=1.2.0 <2.0.0`. It **accepts** 1.2.0, 1.2.5, 1.6.0 (same major — no breaking changes by semver). It **refuses** 1.1.x (too old) and 2.0.0 (a new major may break my code).
-- Exact version of http resolved in `pubspec.lock`: **http 1.6.0** (`^1.6.0` in pubspec.yaml after `flutter pub add`)
-- **pubspec.lock is committed for an app** so that my laptop, a classmate and the CI build the *same* versions. (For a package/library it is not committed.)
-- `flutter pub outdated`: **cross_file 0.3.5+5**, while **0.4.0** is available. It was not upgraded because it is not my direct dependency: image_picker needs `cross_file ^0.3.x`, and 0.4.0 is a new "major" for a 0.x package (the caret on 0.3 allows only 0.3.*). It will move when image_picker allows it.
-- Break-it: `http: 1.2.0` without a caret → the lock pins exactly 1.2.0, pub outdated shows newer as unavailable. Caret put back.
+- `abstract interface class UserRepository { getAll(); getById(id); create(draft); }`
+- `HttpUserRepository implements UserRepository` (real), `FakeUserRepository implements UserRepository` (two users in Dart, `fail:` / `delay:`).
+- `UsersModel(this._repo)` asks for the **interface**; `AuthModel(SecureStore, …)`, `SettingsModel(SharedPreferencesAsync, …)` — everything that touches the disk or the wire comes through the constructor.
+- `grep -rn "HttpUserRepository(" lib/` → the call in **main.dart** (plus the constructor's own declaration line in user_repository.dart — that is the class, not a caller).
+- Demo mode: swap the commented line in main.dart → two users, instantly, no network.
+- **Why the old model could not be tested:** in Practice 11 the model was built in main as `UsersModel(UserRepository(ApiClient(http.Client())))` and the repository was a concrete class with no interface. **The first line I cannot write is the arrange step** — there is no way to give the model a repository that fails on demand without a real network.
 
-## Level 2 — settings before runApp
+## Level 3 — tests
 
-`main()` reads `darkMode` and `cityFilter` with `SharedPreferencesAsync` **before** `runApp`, so the first frame already has the right theme. Moving the read into the model's constructor gives one light frame, then dark — the flash.
-`setDark` calls `notifyListeners()` first and only then `await`s the disk: the screen does not wait for the disk.
+`flutter test` — no network, no disk, no clock: MockClient for http, MemoryStore for the Keychain, MemoryCache for Documents, FakeUserRepository for the model.
 
-## Level 3 — the token
+- Break-it: `on ApiException catch (e) { error = e; }` → empty `catch (e) {}` → "NoConnection sets error" goes red: *Expected: <Instance of 'NoConnectionException'> Actual: <null>*. Restored → green.
 
-- `prefs.setString('token', …)` would put the token in a **plain XML file** (Android: `shared_prefs/…xml`) or a **plist** (iOS) inside the app folder. Readable by: a device **backup**, anyone with **root** / a jailbroken phone, a debugger over a **USB cable**.
-- flutter_secure_storage uses the **iOS Keychain** and **Android Keystore**-encrypted storage.
-- Platform surprise 1 — **iOS**: Keychain items can **survive an uninstall**; after reinstalling, the "old" token may still be there.
-- Platform surprise 2 — **Android**: if the user **removes the lock screen**, Keystore keys may be **invalidated**, and the stored value cannot be decrypted any more (read fails → treat as signed out).
-- The token is never printed and never in shared_preferences; ApiClient adds `Authorization: Bearer …` itself.
+## Level 4 — extract widgets
 
-## Level 4 — offline list
+UsersScreen's states became widgets in `widgets/`: `UsersContent`, `CityFilterRow`, `EmptyView`, `OfflineBanner`, `UsersErrorView`, `OfflineView`, `ServerErrorView`, `NotAvailableView`, `GenericErrorView`, `LoadingView`, `MessageView`, `UserTile`. Every `build()` is under 60 lines.
 
-`users.json` in `getApplicationDocumentsDirectory()`. Online → save; NoConnection → saved list + banner; nothing saved → rethrow → honest Offline screen. With `getTemporaryDirectory()` + "Clear cache" the list disappears silently — the OS kept the promise of the name.
+**Why a widget and not a `_buildHeader()` method** (two lines):
+A widget can be **const** (built once, skipped on rebuild), has **its own rebuild scope** and its own BuildContext, **appears by name in DevTools**, and can be **tested alone** with `pumpWidget`.
+A method is just code inlined into the parent's build — it rebuilds every time the parent does and is invisible to all of those tools.
 
-## Level 5 — permissions
+- Break-it: the Retry label → "Try again" → the widget test fails: *Expected: exactly one matching candidate, Actual: _TextWidgetFinder:<Found 0 widgets with text "Retry">*. Changed back.
 
-- **Android**: Don't allow → Don't allow → the 3rd tap: no system dialog, status **permanentlyDenied**, my dialog → Open settings.
-- **iOS**: the system asks **only once**; one "Don't Allow" → **permanentlyDenied** right away. The fourth Photos state is **limited** ("Selected Photos" access, iOS 14+).
-- `launchUrl(Uri.parse('kbtu.edu.kz'))` without a scheme → **false**, nothing opens; with `https://` the browser opens.
+## Level 5 — read a trace in thirty seconds
 
-Screenshots: `screenshot_offline_banner.png`, `screenshot_permission_dialog.png`.
+Planted: `"lat": -37.3159` (a number) in `tool/planted_bug_test.dart`, run with `flutter test tool/planted_bug_test.dart`.
+
+The trace from my machine (also in `docs/planted_bug_trace.txt`):
+
+```
+type 'double' is not a subtype of type 'String' in type cast
+  package:lab13/features/users/user.dart 8:35   new Geo.fromJson
+  package:lab13/features/users/user.dart 32:14  new Address.fromJson
+  package:lab13/features/users/user.dart 71:24  new User.fromJson
+  tool/planted_bug_test.dart 30:34              PlantedBugRepository.getAll
+```
+
+Annotated:
+
+1. **The message** — `type 'double' is not a subtype of type 'String' in type cast`: something promised a String and got a double.
+2. **My first frame** — `Geo.fromJson (package:lab13/features/users/user.dart 8:35)` — **line 8, column 35** is the `as String` cast inside `double.parse(json['lat'] as String)`.
+3. **The path down** — `Address.fromJson (user.dart:32)` → `User.fromJson (user.dart:71)` → `PlantedBugRepository.getAll (planted_bug_test.dart 30:34)` — then, after the `await` (`<asynchronous suspension>`), it surfaces in `UsersModel.load`, which catches only `ApiException`, so the TypeError escapes and the test goes red. (flutter test folds the frames after the first async gap.)
+4. **The data that went in** — field `address.geo.lat` of user **1** (Leanne Graham): a JSON number instead of a string.
+
+**Why #0 is the right place to throw and the wrong place to fix:** `Geo.fromJson` is where the broken promise is *noticed*, so it must throw there; but the *cause* is the server breaking the contract, so the fix belongs at the boundary — the repository maps the TypeError to `BadResponseException('users: …')` and the screen shows the generic error instead of crashing (test: `user_repository_test.dart` → "a numeric lat from the server → BadResponseException").
+
+## Quality
+
+`avoid_print` is enforced; lib/ uses `log(…, name: 'api' | 'cache')` and `debugPrint` only. The four commands and their output are at the end of README.md.
