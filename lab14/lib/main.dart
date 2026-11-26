@@ -46,14 +46,13 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) =>
-              SettingsModel(
-                prefs,
-                dark: dark,
-                city: city,
-                avatarPath: avatar,
-                devHost: devHost,
-              ),
+          create: (_) => SettingsModel(
+            prefs,
+            dark: dark,
+            city: city,
+            avatarPath: avatar,
+            devHost: devHost,
+          ),
         ),
         ChangeNotifierProvider(create: (_) => AuthModel(store, token)),
         ChangeNotifierProvider(create: (_) => UsersModel(repo)..load()),
