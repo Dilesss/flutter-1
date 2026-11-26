@@ -1,4 +1,4 @@
-package com.example.lab12
+package kz.dilnaz.users
 
 import io.flutter.embedding.android.FlutterActivity
 
