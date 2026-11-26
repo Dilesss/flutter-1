@@ -61,16 +61,16 @@ The trace from my machine (also in `docs/planted_bug_trace.txt`):
 
 ```
 type 'double' is not a subtype of type 'String' in type cast
-  package:lab13/features/users/user.dart 8:35   new Geo.fromJson
-  package:lab13/features/users/user.dart 32:14  new Address.fromJson
-  package:lab13/features/users/user.dart 71:24  new User.fromJson
+  package:lab14/features/users/user.dart 8:35   new Geo.fromJson
+  package:lab14/features/users/user.dart 32:14  new Address.fromJson
+  package:lab14/features/users/user.dart 71:24  new User.fromJson
   tool/planted_bug_test.dart 30:34              PlantedBugRepository.getAll
 ```
 
 Annotated:
 
 1. **The message** — `type 'double' is not a subtype of type 'String' in type cast`: something promised a String and got a double.
-2. **My first frame** — `Geo.fromJson (package:lab13/features/users/user.dart 8:35)` — **line 8, column 35** is the `as String` cast inside `double.parse(json['lat'] as String)`.
+2. **My first frame** — `Geo.fromJson (package:lab14/features/users/user.dart 8:35)` — **line 8, column 35** is the `as String` cast inside `double.parse(json['lat'] as String)`.
 3. **The path down** — `Address.fromJson (user.dart:32)` → `User.fromJson (user.dart:71)` → `PlantedBugRepository.getAll (planted_bug_test.dart 30:34)` — then, after the `await` (`<asynchronous suspension>`), it surfaces in `UsersModel.load`, which catches only `ApiException`, so the TypeError escapes and the test goes red. (flutter test folds the frames after the first async gap.)
 4. **The data that went in** — field `address.geo.lat` of user **1** (Leanne Graham): a JSON number instead of a string.
 

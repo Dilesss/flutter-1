@@ -18,9 +18,9 @@ Try `flutter pub outdated` for more information.
 00:00 +0: planted bug: lat is a number — read the trace
 00:00 +0 -1: planted bug: lat is a number — read the trace [E]
   type 'double' is not a subtype of type 'String' in type cast
-  package:lab13/features/users/user.dart 8:35   new Geo.fromJson
-  package:lab13/features/users/user.dart 32:14  new Address.fromJson
-  package:lab13/features/users/user.dart 71:24  new User.fromJson
+  package:lab14/features/users/user.dart 8:35   new Geo.fromJson
+  package:lab14/features/users/user.dart 32:14  new Address.fromJson
+  package:lab14/features/users/user.dart 71:24  new User.fromJson
   tool/planted_bug_test.dart 30:34              PlantedBugRepository.getAll
   
 00:00 +0 -1: Some tests failed.
