@@ -7,7 +7,11 @@ import '../settings/settings_screen.dart';
 import 'new_user_screen.dart';
 import 'users_model.dart';
 import 'widgets/offline_banner.dart';
-import 'widgets/state_views.dart';
+import 'widgets/generic_error_view.dart';
+import 'widgets/loading_view.dart';
+import 'widgets/not_available_view.dart';
+import 'widgets/offline_view.dart';
+import 'widgets/server_error_view.dart';
 import 'widgets/user_list.dart';
 
 class UsersScreen extends StatelessWidget {
@@ -46,10 +50,10 @@ class UsersScreen extends StatelessWidget {
     // Exhaustive: ApiException is sealed, so no default is needed.
     return switch (m.error) {
       null => _list(m, city),
-      NoConnectionException() => Offline(onRetry: m.load),
-      NotFoundException() || UnauthorizedException() => const NotAvailable(),
-      ServerException(:final status) => ServerError(status, onRetry: m.load),
-      BadResponseException() => const GenericError(),
+      NoConnectionException() => OfflineView(onRetry: m.load),
+      NotFoundException() || UnauthorizedException() => const NotAvailableView(),
+      ServerException(:final status) => ServerErrorView(status, onRetry: m.load),
+      BadResponseException() => const GenericErrorView(),
     };
   }
 
