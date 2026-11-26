@@ -56,7 +56,7 @@ UserRepository _repo(
   Future<http.Response> Function(http.Request r) answer, {
   String? token,
   List<User>? cached,
-}) => UserRepository(
+}) => HttpUserRepository(
   ApiClient(MockClient(answer), _MemoryStore(token)),
   _MemoryCache(cached),
 );

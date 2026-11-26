@@ -10,16 +10,25 @@ import 'users_cache.dart';
 /// Where the list came from: the server, or the file from last time.
 typedef UsersResult = ({List<User> items, bool fromCache});
 
-/// Screens ask this class for Users and get Users — or an ApiException.
-/// Never a Response, never a status code, never a Map.
-class UserRepository {
-  UserRepository(this._api, this._cache);
+/// The contract. Models depend on this, never on a concrete class:
+/// they get Users — or an ApiException. Never a Response, never a status
+/// code, never a Map.
+abstract interface class UserRepository {
+  Future<UsersResult> getAll();
+  Future<User> getById(int id);
+  Future<User> create(User draft);
+}
+
+/// The real one: the only class (with ApiClient) that knows http exists.
+class HttpUserRepository implements UserRepository {
+  HttpUserRepository(this._api, this._cache);
 
   final ApiClient _api;
   final UsersCache _cache;
 
   /// Fresh from the server (and saved), or — with no network — the saved
   /// list. Nothing saved and no network → NoConnectionException.
+  @override
   Future<UsersResult> getAll() async {
     try {
       final fresh = await _fetchAll();
@@ -44,6 +53,7 @@ class UserRepository {
     });
   }
 
+  @override
   Future<User> getById(int id) async {
     final body = await _api.run(
       (http.Client c, Map<String, String> h) =>
@@ -56,6 +66,7 @@ class UserRepository {
   }
 
   /// POST: the server answers 201 with what we sent plus its own id.
+  @override
   Future<User> create(User draft) async {
     final json = draft.toJson()..remove('id'); // the server assigns the id
     final body = await _api.run(
