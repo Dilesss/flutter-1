@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../auth/auth_model.dart';
 import '../profile/profile_screen.dart';
 import '../users/users_model.dart';
 import 'settings_model.dart';
+import 'widgets/developer_host_tile.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -67,9 +69,12 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('About'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+              MaterialPageRoute<void>(
+                builder: (_) => AboutScreen(hostOverride: s.devHost),
+              ),
             ),
           ),
+          if (kDebugMode) const DeveloperHostTile(),
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Sign out'),

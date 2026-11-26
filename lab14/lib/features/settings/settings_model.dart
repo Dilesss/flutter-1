@@ -9,22 +9,29 @@ class SettingsModel extends ChangeNotifier {
     required bool dark,
     String? city,
     String? avatarPath,
+    String? devHost,
   }) : _isDark = dark,
        _cityFilter = city,
-       _avatarFile = avatarPath;
+       _avatarFile = avatarPath,
+       _developerHost = devHost;
 
   static const darkKey = 'darkMode';
   static const cityKey = 'cityFilter';
   static const avatarKey = 'avatarPath';
+  static const devHostKey = 'devApiHost';
 
   final SharedPreferencesAsync _prefs;
   bool _isDark;
   String? _cityFilter;
   String? _avatarFile;
+  String? _developerHost;
 
   bool get dark => _isDark;
   String? get city => _cityFilter;
   String? get avatarPath => _avatarFile;
+
+  /// Debug builds only: a host a tester picked at runtime (null = Env.host).
+  String? get devHost => _developerHost;
 
   /// The screen first, the disk second: notifyListeners() before the await.
   Future<void> setDark(bool value) async {
@@ -48,5 +55,16 @@ class SettingsModel extends ChangeNotifier {
     _avatarFile = path;
     notifyListeners();
     await _prefs.setString(avatarKey, path);
+  }
+
+  /// Used on the next start (main() reads it before building ApiClient).
+  Future<void> setDevHost(String? host) async {
+    _developerHost = host;
+    notifyListeners();
+    if (host == null) {
+      await _prefs.remove(devHostKey);
+    } else {
+      await _prefs.setString(devHostKey, host);
+    }
   }
 }
