@@ -18,8 +18,8 @@ class UsersErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (error) {
       NoConnectionException() => OfflineView(onRetry: onRetry),
-      NotFoundException() || UnauthorizedException() =>
-        const NotAvailableView(),
+      NotFoundException() ||
+      UnauthorizedException() => const NotAvailableView(),
       ServerException(:final status) => ServerErrorView(
         status,
         onRetry: onRetry,

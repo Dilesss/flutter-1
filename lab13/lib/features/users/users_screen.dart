@@ -50,9 +50,9 @@ class UsersScreen extends StatelessWidget {
       ),
       body: RefreshIndicator(onRefresh: m.load, child: body),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const NewUserScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const NewUserScreen())),
         icon: const Icon(Icons.person_add),
         label: const Text('New user'),
       ),
