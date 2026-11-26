@@ -1,4 +1,57 @@
-# Practice 13 — Where Things Go (lab13)
+# Practice 14 — Ship It (lab14)
+
+A release is a release when all fourteen boxes are ticked (README.md), not when the build command succeeds.
+
+## Level 1 — identity and version
+
+- `applicationId = "kz.dilnaz.users"`, `namespace` the same (MainActivity moved to `kotlin/kz/dilnaz/users/`). Reverse-domain, lower case, never `com.example`. **It is the identity: change it and the store sees a new app.**
+- `minSdk / targetSdk / versionCode / versionName` all come from `flutter.*` — read from pubspec, never typed in Gradle.
+- `version: 1.0.1+2` →
+  - **1.0.1** = *versionName* — for **people** (shown in the store and in About). Semver: major.minor.patch.
+  - **2** = *versionCode* / build number — for **the store**. An integer that **must go up on every upload**; the store refuses an equal or lower one.
+- About screen: `1.0.1 (2) · debug · local · jsonplaceholder.typicode.com`; licences via `showLicensePage`.
+- Break-it: `versionCode = 1` hard-coded in Gradle + pubspec `+3` → About still says (1) — the third-upload rejection. Put `flutter.versionCode` back.
+
+## Level 2 — a key I never commit
+
+- `.gitignore` got `*.jks`, `*.keystore`, `android/key.properties`, `env/*.local.json` — committed **before** the key existed.
+- Key: `~/upload-keystore.jks` (outside the project), alias `upload`, RSA 2048, validity 10000 days.
+- Backup: *(write where — e.g. "a USB stick in my drawer + my Google Drive", NOT the password)*
+- `android/key.properties` points to it; `build.gradle.kts` loads it into `signingConfigs.release`; `buildTypes.release` uses `getByName("release")` (not "debug") and `isMinifyEnabled = true`.
+- `keytool -printcert -jarfile …app-arm64-v8a-release.apk`: see "Release" below.
+- **If I had committed the key and its passwords:** anyone could sign an APK with *my* `applicationId` and *my* key — an "update" of my app that phones accept, e.g. one that steals the token.
+- **Play App Signing** changes that: Google keeps the real *app signing key*; mine is only an *upload key*. If it leaks or is lost, Google can reset the upload key — the app is not lost.
+- **Scrub a file from git history** (two commands):
+  ```
+  git filter-repo --path android/key.properties --invert-paths
+  git push --force --all
+  ```
+  (and then treat the key as leaked anyway: rotate it).
+
+## Level 3 — environments
+
+- `lib/core/env.dart` is the only file with `fromEnvironment` (`grep -rn fromEnvironment lib/` → env.dart only).
+- `USE_FAKES=true` → `FakeUserRepository`, two users, works in airplane mode.
+- `--dart-define=ENV=staging --dart-define=API_HOST=example.invalid` → About shows both; the list shows the Offline view (the host does not exist).
+- **Why the developer host switch cannot be `fromEnvironment`:** `fromEnvironment` is a *const*, baked in at **build** time — a tester cannot change it on the phone. The switch is a *runtime* value in shared_preferences, read in main().
+- **Why it must never be in a release:** anyone could point the production app at their own server (and send it the token). It is behind `kDebugMode` twice: the tile is not built, and main() does not even read the preference in release.
+
+## Level 4 — icon, splash, name
+
+- Icon: `assets/icon/icon.png` (1024², no alpha) + `foreground.png` for the adaptive icon, background `#3F51B5`.
+- Splash: `assets/splash/splash.png`, Android 12: `android12.png` (1152², the glyph inside the 768 circle).
+- Name: `android:label="Users"`, `CFBundleDisplayName = Users`.
+- INTERNET is in the **main** manifest — the debug manifest declares it for you, the release one does not. Without it: Offline view instantly and forever in a release build.
+
+## Level 5 — the release
+
+*(filled by `release_lab14.sh`)*
+
+
+---
+
+## (Practice 13 notes, kept)
+
 
 One rule: **dependencies point down** — screens watch models, models use repositories, repositories touch the world — and never up.
 
