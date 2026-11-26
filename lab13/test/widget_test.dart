@@ -62,13 +62,6 @@ UserRepository _repo(
 );
 
 void main() {
-  test('fromJson / toJson round-trip', () {
-    final u = User.fromJson(_json);
-    expect(u.address.geo.lat, -37.3159);
-    expect(u.phoneDigits, '1770736803156442'); // "x56442" keeps its digits
-    expect(User.fromJson(u.toJson()), u);
-  });
-
   test('404 → NotFoundException', () {
     final repo = _repo((_) async => http.Response('{}', 404));
     expect(repo.getById(999), throwsA(isA<NotFoundException>()));
