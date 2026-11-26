@@ -43,6 +43,23 @@ void main() {
     });
   });
 
+  group('the planted bug (Level 5)', () {
+    test('a numeric lat from the server → BadResponseException, no crash', () {
+      final broken = _listOfOne.replaceFirst('"-37.3159"', '-37.3159');
+      final repo = _repo((_) async => http.Response(broken, 200));
+      expect(
+        repo.getAll(),
+        throwsA(
+          isA<BadResponseException>().having(
+            (e) => e.detail,
+            'detail',
+            contains('users'),
+          ),
+        ),
+      );
+    });
+  });
+
   group('cache and token', () {
     test('online → fresh list, not from cache', () async {
       final repo = _repo((_) async => http.Response(_listOfOne, 200));

@@ -31,4 +31,11 @@ void main() {
       expect(user.phoneDigits, '1770736803156442');
     });
   });
+
+  group('the planted bug (Level 5)', () {
+    test('Geo.fromJson with "lat": -37.3159 (a number) throws', () {
+      final json = <String, dynamic>{'lat': -37.3159, 'lng': '81.1496'};
+      expect(() => Geo.fromJson(json), throwsA(isA<TypeError>()));
+    });
+  });
 }
