@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/api/api_exception.dart';
 import '../settings/settings_model.dart';
 import '../settings/settings_screen.dart';
 import 'new_user_screen.dart';
 import 'users_model.dart';
-import 'widgets/offline_banner.dart';
-import 'widgets/generic_error_view.dart';
 import 'widgets/loading_view.dart';
-import 'widgets/not_available_view.dart';
-import 'widgets/offline_view.dart';
-import 'widgets/server_error_view.dart';
-import 'widgets/user_list.dart';
+import 'widgets/users_content.dart';
+import 'widgets/users_error_view.dart';
 
 class UsersScreen extends StatelessWidget {
   const UsersScreen({super.key});
@@ -21,6 +16,25 @@ class UsersScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = context.watch<UsersModel>();
     final city = context.watch<SettingsModel>().city;
+    final visible = city == null
+        ? m.items
+        : m.items.where((u) => u.address.city == city).toList();
+
+    // Loading → spinner; otherwise exhaustive on the sealed error.
+    Widget body = const LoadingView();
+    if (!m.loading) {
+      body = switch (m.error) {
+        null => UsersContent(
+          users: visible,
+          total: m.items.length,
+          fromCache: m.fromCache,
+          onRetry: m.load,
+          city: city,
+        ),
+        final error => UsersErrorView(error, onRetry: m.load),
+      };
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Users'),
@@ -34,51 +48,14 @@ class UsersScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(onRefresh: m.load, child: _body(m, city)),
+      body: RefreshIndicator(onRefresh: m.load, child: body),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const NewUserScreen())),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const NewUserScreen()),
+        ),
         icon: const Icon(Icons.person_add),
         label: const Text('New user'),
       ),
-    );
-  }
-
-  Widget _body(UsersModel m, String? city) {
-    if (m.loading) return const LoadingView();
-    // Exhaustive: ApiException is sealed, so no default is needed.
-    return switch (m.error) {
-      null => _list(m, city),
-      NoConnectionException() => OfflineView(onRetry: m.load),
-      NotFoundException() || UnauthorizedException() => const NotAvailableView(),
-      ServerException(:final status) => ServerErrorView(status, onRetry: m.load),
-      BadResponseException() => const GenericErrorView(),
-    };
-  }
-
-  /// The list, filtered by the saved city, with the stale banner on top
-  /// when (and only when) the data came from the cache.
-  Widget _list(UsersModel m, String? city) {
-    final visible = city == null
-        ? m.items
-        : m.items.where((u) => u.address.city == city).toList();
-    return Column(
-      children: [
-        if (m.fromCache) OfflineBanner(onRetry: m.load),
-        if (city != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Row(
-              children: [
-                const Icon(Icons.filter_alt, size: 18),
-                const SizedBox(width: 6),
-                Text('City: $city · ${visible.length} of ${m.items.length}'),
-              ],
-            ),
-          ),
-        Expanded(child: UserList(visible)),
-      ],
     );
   }
 }
