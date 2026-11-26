@@ -25,8 +25,13 @@ Future<void> main() async {
   const store = SecureStore();
   final token = await store.readToken(); // String?
 
+  // The composition root: the ONLY place that chooses real or fake.
   // ApiClient.live(store) = ApiClient(http.Client(), store).
   final api = ApiClient.live(store);
+  final UserRepository repo = HttpUserRepository(api, const UsersCache());
+  // Demo mode (no network, two users) — swap the line above for:
+  // final UserRepository repo = FakeUserRepository();
+  // (and import 'features/users/fake_user_repository.dart')
 
   runApp(
     MultiProvider(
@@ -36,10 +41,7 @@ Future<void> main() async {
               SettingsModel(prefs, dark: dark, city: city, avatarPath: avatar),
         ),
         ChangeNotifierProvider(create: (_) => AuthModel(store, token)),
-        ChangeNotifierProvider(
-          create: (_) =>
-              UsersModel(HttpUserRepository(api, const UsersCache()))..load(),
-        ),
+        ChangeNotifierProvider(create: (_) => UsersModel(repo)..load()),
       ],
       child: const App(),
     ),
