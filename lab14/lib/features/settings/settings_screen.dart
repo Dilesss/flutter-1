@@ -7,6 +7,7 @@ import '../auth/auth_model.dart';
 import '../profile/profile_screen.dart';
 import '../users/users_model.dart';
 import 'settings_model.dart';
+import 'widgets/city_dropdown.dart';
 import 'widgets/developer_host_tile.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -39,21 +40,10 @@ class SettingsScreen extends StatelessWidget {
             value: s.dark,
             onChanged: (v) => s.setDark(v),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: DropdownButtonFormField<String?>(
-              initialValue: saved,
-              decoration: const InputDecoration(
-                labelText: 'Show users from',
-                prefixIcon: Icon(Icons.location_city),
-              ),
-              items: [
-                const DropdownMenuItem<String?>(child: Text('All cities')),
-                for (final c in cities)
-                  DropdownMenuItem<String?>(value: c, child: Text(c)),
-              ],
-              onChanged: (c) => s.setCity(c),
-            ),
+          CityDropdown(
+            cities: cities,
+            selected: saved,
+            onChanged: (c) => s.setCity(c),
           ),
           const Divider(),
           ListTile(
