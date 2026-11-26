@@ -46,3 +46,9 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Signing — never committed (Practice 14)
+*.jks
+*.keystore
+android/key.properties
+env/*.local.json
