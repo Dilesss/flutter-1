@@ -20,7 +20,10 @@ class ApiClient {
 
   /// The real client, for the app: ApiClient(http.Client(), store).
   /// Tests pass their own http.Client (MockClient) and a fake store.
-  factory ApiClient.live(SecureStore store) => ApiClient(http.Client(), store);
+  factory ApiClient.live(
+    SecureStore store, {
+    String host = 'jsonplaceholder.typicode.com',
+  }) => ApiClient(http.Client(), store, host: host);
 
   final http.Client _client;
   final SecureStore _store;

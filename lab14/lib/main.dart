@@ -4,9 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/api/api_client.dart';
+import 'core/env.dart';
 import 'core/storage/secure_store.dart';
 import 'features/auth/auth_model.dart';
 import 'features/settings/settings_model.dart';
+import 'features/users/fake_user_repository.dart';
 import 'features/users/user_repository.dart';
 import 'features/users/users_cache.dart';
 import 'features/users/users_model.dart';
@@ -25,13 +27,14 @@ Future<void> main() async {
   const store = SecureStore();
   final token = await store.readToken(); // String?
 
-  // The composition root: the ONLY place that chooses real or fake.
-  // ApiClient.live(store) = ApiClient(http.Client(), store).
-  final api = ApiClient.live(store);
-  final UserRepository repo = HttpUserRepository(api, const UsersCache());
-  // Demo mode (no network, two users) — swap the line above for:
-  // final UserRepository repo = FakeUserRepository();
-  // (and import 'features/users/fake_user_repository.dart')
+  // The composition root: the ONLY place that chooses real or fake —
+  // now by a build-time switch: --dart-define=USE_FAKES=true.
+  final UserRepository repo = Env.useFakes
+      ? FakeUserRepository()
+      : HttpUserRepository(
+          ApiClient.live(store, host: Env.host),
+          const UsersCache(),
+        );
 
   runApp(
     MultiProvider(
